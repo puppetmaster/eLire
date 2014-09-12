@@ -36,6 +36,11 @@ static void elire_shutdown()
   eina_shutdown();
 }
 
+static void ebiblio_free(eBiblio *bib)
+{
+  free(bib);
+}
+
 static void ebiblio_show(eBiblio *bib)
 {
   Eina_List *book;
@@ -50,9 +55,22 @@ static void ebiblio_show(eBiblio *bib)
 static Eina_Bool
 _filter_epub_cb(void *data, Eio_File *handler, const Eina_File_Direct_Info *info)
 {
-  if (info->type == EINA_FILE_REG)
+  char *mime;
+  char *path;
+
+  path = eina_file_path_sanitize(info->path);
+  
+  if (info->type == EINA_FILE_REG )
+  {
+    mime = efreet_mime_type_get(path);
+    if (!strcmp(mime, EPUB_MIME_TYPE))
+      return EINA_TRUE;
+    else
+      return EINA_FALSE;
+  }
+  else if (info->type == EINA_FILE_DIR)
     return EINA_TRUE;
-  else
+  else 
     return EINA_FALSE;
 }
 
@@ -63,7 +81,8 @@ _add_to_library_cb(void *data, Eio_File *handler, const Eina_File_Direct_Info *i
   char *path;
 
   path = eina_file_path_sanitize(info->path);
-  biblio->books = eina_list_append(biblio->books, path);
+  if (info->type == EINA_FILE_REG)
+    biblio->books = eina_list_append(biblio->books, path);
 }
 
 static void
@@ -71,6 +90,7 @@ _done_cb(void *data, Eio_File *handler)
 {
   eBiblio *biblio = data;
   ebiblio_show(biblio);
+  ebiblio_free(biblio);
   ecore_main_loop_quit();
 }
 
@@ -81,42 +101,9 @@ _error_cb(void *data, Eio_File *handler, int error)
   ecore_main_loop_quit();
 }
 
-/*
-static void _get_epub_list2(eBiblio *biblio, char *dir)
+static void ebiblio_create(char* path, eBiblio *biblio)
 {
-  Eina_Iterator *files;
-  Eina_File_Direct_Info *info;
-  char *path;
-
-  files = eina_file_stat_ls(dir);
-
-  EINA_ITERATOR_FOREACH(files, info)
-  {
-    path = eina_file_path_sanitize(info->path);
-
-    if (info->type == EINA_FILE_REG)
-    {
-      
-      biblio->books = eina_list_append(biblio->books, path);
-      printf("Regular File %s\n",path);
-    }
-    else if (info->type == EINA_FILE_DIR)
-    {
-      //_get_epub_list2(biblio, path);
-      _get_epub_list2(biblio, path);
-      printf("Directory : %s\n",path);
-    }
-    else
-      continue;
-
-    //free(path);
-  }
-}
-*/
-
-eBiblio *ebiblio_new(char* path, eBiblio *biblio)
-{
-
+  printf("ICI`n");
   if (biblio == NULL)
     biblio = calloc(1, sizeof(eBiblio));
 
@@ -127,23 +114,15 @@ eBiblio *ebiblio_new(char* path, eBiblio *biblio)
   else
     printf("%s : No such file or directory\n", biblio->path);
 
-  return biblio;
-
-}
-
-static void ebiblio_free(eBiblio *bib)
-{
-  free(bib);
 }
 
 int main(int argc, char **argv)
 {
-  eBiblio *library;
+  eBiblio *library = NULL;
 
   elire_init();
 
-  ebiblio_new(BOOKPATH, library);
-  ebiblio_free(library);
+  ebiblio_create(BOOKPATH, library);
 
   ecore_main_loop_begin();
 
