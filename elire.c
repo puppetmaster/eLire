@@ -60,9 +60,10 @@ static void
 _add_to_library_cb(void *data, Eio_File *handler, const Eina_File_Direct_Info *info)
 {
   eBiblio *biblio = data;
+  char *path;
 
-  if (info->path != NULL)
-    biblio->books = eina_list_append(biblio->books, info->path);
+  path = eina_file_path_sanitize(info->path);
+  biblio->books = eina_list_append(biblio->books, path);
 }
 
 static void
@@ -122,7 +123,6 @@ eBiblio *ebiblio_new(char* path, eBiblio *biblio)
   biblio->path = path;
 
   if (ecore_file_is_dir(biblio->path))
-    //biblio->books = _get_epub_list(path);
     eio_dir_stat_ls(path, _filter_epub_cb, _add_to_library_cb, _done_cb, _error_cb, biblio);
   else
     printf("%s : No such file or directory\n", biblio->path);
